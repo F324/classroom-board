@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Classroom Board</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --card:#fffdf8; --ink:#1f2a37; --muted:#6b7280; --line:#e5e0d3; --accent:#0f766e; --accent-ink:#fff;
+  --bar:rgba(255,253,248,.92); --field:#fff;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--card:#1e2530; --ink:#eef1f5; --muted:#9aa5b4; --line:#323c4a; --accent:#2dd4bf; --accent-ink:#06201d; --bar:rgba(30,37,48,.92); --field:#151b24}
+}
+:root[data-theme="dark"]{--card:#1e2530; --ink:#eef1f5; --muted:#9aa5b4; --line:#323c4a; --accent:#2dd4bf; --accent-ink:#06201d; --bar:rgba(30,37,48,.92); --field:#151b24}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:"Nunito","Trebuchet MS",system-ui,sans-serif;color:var(--ink);background:#2f6f73;overflow:hidden}
+#stage{position:relative;height:100%;overflow:hidden;background:var(--bg,linear-gradient(135deg,#2f6f73,#1d3f5c))}
+#stage.b1{--bg:linear-gradient(135deg,#2f6f73,#1d3f5c)}
+#stage.b2{--bg:linear-gradient(135deg,#f6c177,#e0736a)}
+#stage.b3{--bg:linear-gradient(135deg,#3b2a5a,#a14e8f)}
+#stage.b4{--bg:#2d4a3e}
+#stage.b5{--bg:#e8e4d8}
+#hint{position:absolute;inset:0 0 80px;display:grid;place-items:center;text-align:center;color:rgba(255,255,255,.85);font-size:1.3rem;pointer-events:none;padding:24px}
+#stage.b5 #hint{color:#555}
+#hint.gone{display:none}
+.widget{position:absolute;background:var(--card);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:calc(100% - 16px);display:flex;flex-direction:column}
+.widget header{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 14px;cursor:grab;touch-action:none;border-bottom:1px solid var(--line);font-weight:800;font-size:.95rem;user-select:none}
+.widget header:active{cursor:grabbing}
+.x{border:0;background:transparent;color:var(--muted);font-size:1.3rem;line-height:1;width:32px;height:32px;border-radius:8px;cursor:pointer}
+.x:hover{background:var(--line);color:var(--ink)}
+.body{padding:14px}
+.big{font-size:3rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;line-height:1.1}
+.sub{text-align:center;color:var(--muted);margin-top:4px}
+.row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+button.b,select,textarea,input{font:inherit}
+button.b{border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;padding:7px 12px;cursor:pointer;font-weight:700}
+button.b:hover{border-color:var(--accent)}
+button.p{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+textarea,input[type=number],select{width:100%;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;padding:8px}
+textarea{resize:vertical;min-height:90px}
+.light{display:flex;flex-direction:column;align-items:center;gap:8px}
+.lamps{background:#222;border-radius:40px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.lamp{width:56px;height:56px;border-radius:50%;border:0;cursor:pointer;opacity:.18;transition:opacity .15s}
+.lamp.on{opacity:1;box-shadow:0 0 18px currentColor}
+.meter{height:18px;border-radius:9px;background:var(--line);overflow:hidden;margin:12px 0 6px}
+.meter i{display:block;height:100%;width:0;background:#22c55e;transition:width .08s,background .2s}
+.note{min-height:80px;outline:none;font-size:1.15rem;line-height:1.4}
+.dice{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;min-height:64px}
+.die{width:60px;height:60px;border-radius:12px;background:var(--field);border:2px solid var(--ink);display:grid;place-items:center;font-size:1.9rem;font-weight:800}
+#bar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:4px;align-items:center;background:var(--bar);backdrop-filter:blur(8px);padding:6px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:calc(100% - 16px);overflow-x:auto}
+#bar button{border:0;background:transparent;color:var(--ink);font:inherit;font-size:.78rem;font-weight:700;padding:6px 9px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap}
+#bar button span{font-size:1.4rem;line-height:1}
+#bar button:hover{background:var(--line)}
+#bar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
+.dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--card)!important;padding:0!important}
+.body input{width:100%;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;padding:8px;min-width:0}
+.sym{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sym button{border:2px solid var(--line);background:var(--field);color:var(--ink);border-radius:12px;padding:8px 4px;cursor:pointer;font:inherit;font-size:.75rem;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
+.sym button span{font-size:1.8rem}
+.sym button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.poll .opt{display:grid;grid-template-columns:1fr auto 1.4em auto;gap:6px;align-items:center;margin-top:8px}
+.poll .opt b{text-align:center}
+.poll .bar{grid-column:1/-1;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.poll .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.qr{display:grid;place-items:center;margin-top:10px;text-align:center}
+.qr div{background:#fff;color:#333;padding:10px;border-radius:10px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="stage" class="b1">
+  <div id="hint">Pick a tool from the bar below to put it on the board.<br>Drag any tool by its title to move it.</div>
+  <nav id="bar" aria-label="Tools"></nav>
+</div>
+<script>
+const stage=document.getElementById('stage'), bar=document.getElementById('bar'), hint=document.getElementById('hint');
+let z=1, n=0;
+const $=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild};
+const pad=v=>String(v).padStart(2,'0');
+let ac=null;
+function beep(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();for(let i=0;i<3;i++){const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.value=.15;o.start(ac.currentTime+i*.35);o.stop(ac.currentTime+i*.35+.2)}}catch(e){}}
+
+const T={
+clock:{t:'Clock',i:'🕒',w:270,make(b){
+  b.innerHTML='<div class="big" data-t></div><div class="sub" data-d></div>';
+  const t=b.querySelector('[data-t]'),d=b.querySelector('[data-d]');
+  const u=()=>{const x=new Date();t.textContent=pad(x.getHours())+':'+pad(x.getMinutes())+':'+pad(x.getSeconds());d.textContent=x.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})};
+  u();const id=setInterval(u,1000);return()=>clearInterval(id)}},
+timer:{t:'Timer',i:'⏱️',w:290,make(b){
+  b.innerHTML='<div class="big" data-t>05:00</div><div class="row" data-p></div><div class="row"><button class="b p" data-go>Start</button><button class="b" data-rs>Reset</button></div>';
+  let total=300,left=300,end=0,id=null;const t=b.querySelector('[data-t]'),go=b.querySelector('[data-go]');
+  const show=()=>{t.textContent=pad(Math.floor(left/60))+':'+pad(left%60)};
+  const stop=()=>{clearInterval(id);id=null;go.textContent='Start'};
+  const tick=()=>{left=Math.max(0,Math.ceil((end-Date.now())/1000));show();if(left<=0){stop();beep()}};
+  [1,5,10,15].forEach(m=>{const x=$('<button class="b">'+m+' min</button>');x.onclick=()=>{stop();total=left=m*60;show()};b.querySelector('[data-p]').append(x)});
+  go.onclick=()=>{if(id){stop();return}if(left<=0)left=total;end=Date.now()+left*1000;id=setInterval(tick,250);go.textContent='Pause'};
+  b.querySelector('[data-rs]').onclick=()=>{stop();left=total;show()};
+  return()=>clearInterval(id)}},
+light:{t:'Voice level',i:'🚦',w:200,make(b){
+  const L=[['#ef4444','Silent'],['#f59e0b','Whisper'],['#22c55e','Group talk']];
+  b.innerHTML='<div class="light"><div class="lamps"></div><div class="big" style="font-size:1.4rem" data-l>Silent</div></div>';
+  const lamps=b.querySelector('.lamps'),lab=b.querySelector('[data-l]');
+  L.forEach((c,i)=>{const x=$('<button class="lamp" aria-label="'+c[1]+'" style="background:'+c[0]+';color:'+c[0]+'"></button>');
+    x.onclick=()=>{lamps.querySelectorAll('.lamp').forEach(y=>y.classList.remove('on'));x.classList.add('on');lab.textContent=c[1]};lamps.append(x)});
+  lamps.firstChild.click()}},
+noise:{t:'Noise meter',i:'🎤',w:290,make(b){
+  b.innerHTML='<div class="meter"><i></i></div><div class="sub" data-s>Allow the microphone to measure classroom noise.</div><div class="row"><button class="b p" data-go>Start listening</button></div>';
+  const bar=b.querySelector('i'),s=b.querySelector('[data-s]'),go=b.querySelector('[data-go]');
+  let stream=null,raf=0,ctx=null;
+  const off=()=>{cancelAnimationFrame(raf);stream&&stream.getTracks().forEach(x=>x.stop());ctx&&ctx.close();stream=ctx=null;go.textContent='Start listening';bar.style.width='0'};
+  go.onclick=async()=>{if(stream){off();return}
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:true});ctx=new (window.AudioContext||window.webkitAudioContext)();
+      const a=ctx.createAnalyser();a.fftSize=512;ctx.createMediaStreamSource(stream).connect(a);const buf=new Uint8Array(a.fftSize);go.textContent='Stop';
+      const f=()=>{a.getByteTimeDomainData(buf);let m=0;for(const v of buf)m+=Math.abs(v-128);const lv=Math.min(1,m/buf.length/40);
+        bar.style.width=lv*100+'%';bar.style.background=lv<.4?'#22c55e':lv<.7?'#f59e0b':'#ef4444';s.textContent=lv<.4?'Quiet — nice work':lv<.7?'Getting loud':'Too loud';raf=requestAnimationFrame(f)};f()}
+    catch(e){s.textContent='Microphone is blocked. Allow access in your browser, then try again.'}};
+  return off}},
+names:{t:'Name picker',i:'🎯',w:290,make(b){
+  b.innerHTML='<textarea aria-label="Names, one per line">Alex\nBlake\nCasey\nDrew\nEmery</textarea><div class="big" style="font-size:2rem;margin-top:10px" data-r>?</div><div class="row"><button class="b p" data-go>Pick a name</button></div>';
+  const ta=b.querySelector('textarea'),r=b.querySelector('[data-r]');let id=null;
+  b.querySelector('[data-go]').onclick=()=>{const L=ta.value.split('\n').map(x=>x.trim()).filter(Boolean);if(!L.length){r.textContent='Add names first';return}
+    clearInterval(id);let k=0;id=setInterval(()=>{r.textContent=L[Math.floor(Math.random()*L.length)];if(++k>14)clearInterval(id)},70)};
+  return()=>clearInterval(id)}},
+dice:{t:'Dice',i:'🎲',w:270,make(b){
+  b.innerHTML='<div class="dice" data-d></div><div class="row"><select data-c style="width:auto"><option>1</option><option selected>2</option><option>3</option></select><button class="b p" data-go>Roll</button></div>';
+  const d=b.querySelector('[data-d]'),c=b.querySelector('[data-c]');
+  const roll=()=>{d.innerHTML='';for(let i=0;i<+c.value;i++)d.append($('<div class="die">'+(1+Math.floor(Math.random()*6))+'</div>'))};
+  b.querySelector('[data-go]').onclick=roll;roll()}},
+sym:{t:'Work mode',i:'🧑‍🏫',w:300,make(b){
+  const S=[['🤫','Silent work'],['🗣️','Partner talk'],['👥','Group work'],['✋','Ask 3 before me'],['👂','Listening'],['📖','Reading']];
+  b.innerHTML='<div class="big" style="font-size:4rem" data-i></div><div class="sub" style="font-size:1.2rem;font-weight:800;color:var(--ink);margin-bottom:10px" data-n></div><div class="sym"></div>';
+  const i=b.querySelector('[data-i]'),n=b.querySelector('[data-n]'),g=b.querySelector('.sym');
+  S.forEach(s=>{const x=$('<button><span>'+s[0]+'</span>'+s[1]+'</button>');x.onclick=()=>{g.querySelectorAll('button').forEach(y=>y.classList.remove('on'));x.classList.add('on');i.textContent=s[0];n.textContent=s[1]};g.append(x)});
+  g.firstChild.click()}},
+poll:{t:'Poll',i:'📊',w:310,make(b){
+  b.innerHTML='<input aria-label="Question" value="Which one do you pick?"><div class="poll"></div><div class="row"><button class="b" data-z>Reset votes</button></div>';
+  const o=b.querySelector('.poll'),c=[0,0,0,0];
+  const upd=()=>{const tot=c.reduce((a,x)=>a+x,0)||1;o.querySelectorAll('.opt').forEach((r,i)=>{r.querySelector('b').textContent=c[i];r.querySelector('.bar i').style.width=c[i]/tot*100+'%'})};
+  ['Option A','Option B','Option C','Option D'].forEach((s,i)=>{
+    const r=$('<div class="opt"><input aria-label="Option '+(i+1)+'" value="'+s+'"><button class="b" aria-label="Remove vote">−</button><b>0</b><button class="b" aria-label="Add vote">+</button><div class="bar"><i></i></div></div>');
+    const [m,p]=r.querySelectorAll('button');m.onclick=()=>{c[i]=Math.max(0,c[i]-1);upd()};p.onclick=()=>{c[i]++;upd()};o.append(r)});
+  b.querySelector('[data-z]').onclick=()=>{c.fill(0);upd()}}},
+qr:{t:'QR code',i:'🔳',w:260,make(b){
+  b.innerHTML='<input aria-label="Link or text" placeholder="Paste a link" value="https://example.com"><div class="qr"><div></div></div>';
+  const inp=b.querySelector('input'),box=b.querySelector('.qr div');
+  const draw=()=>{box.innerHTML='';const v=inp.value.trim();if(!v||typeof QRCode==='undefined'){box.textContent=v?'QR library could not load.':'Type a link above.';return}new QRCode(box,{text:v,width:180,height:180})};
+  inp.addEventListener('input',draw);draw()}},
+text:{t:'Note',i:'📝',w:320,make(b){
+  b.innerHTML='<div class="note" contenteditable="true" spellcheck="false" aria-label="Note">Today we are learning…</div>'}}
+};
+
+const KEY='classroom-board-v1';
+function save(){try{const w=[...stage.querySelectorAll('.widget')].map(el=>{const b=el.querySelector('.body');return{type:el.dataset.type,x:el.offsetLeft,y:el.offsetTop,v:[...b.querySelectorAll('textarea,input')].map(f=>f.value),n:[...b.querySelectorAll('[contenteditable]')].map(f=>f.innerText)}});localStorage.setItem(KEY,JSON.stringify({bg:stage.className,w}))}catch(e){}}
+stage.addEventListener('input',()=>{clearTimeout(save.t);save.t=setTimeout(save,500)});
+function add(type,s){
+  const d=T[type];hint.classList.add('gone');
+  const el=$('<section class="widget"><header><span>'+d.i+' '+d.t+'</span><button class="x" aria-label="Close '+d.t+'">×</button></header><div class="body"></div></section>');
+  const off=(n++%6)*32;
+  el.style.left=Math.min(24+off,Math.max(8,innerWidth-d.w-16))+'px';el.style.top=(24+off)+'px';el.style.width=d.w+'px';el.style.zIndex=++z;
+  const body=el.querySelector('.body');const kill=d.make(body);el.dataset.type=type;
+  if(s){el.style.left=s.x+'px';el.style.top=s.y+'px';(s.v||[]).forEach((v,k)=>{const f=body.querySelectorAll('textarea,input')[k];if(f){f.value=v;f.dispatchEvent(new Event('input'))}});(s.n||[]).forEach((v,k)=>{const f=body.querySelectorAll('[contenteditable]')[k];if(f)f.innerText=v})}
+  el.querySelector('.x').onclick=()=>{kill&&kill();el.remove();if(!stage.querySelector('.widget'))hint.classList.remove('gone');save()};
+  const h=el.querySelector('header');
+  el.addEventListener('pointerdown',()=>el.style.zIndex=++z);
+  h.addEventListener('pointerdown',e=>{if(e.target.closest('.x'))return;
+    const ox=e.clientX-el.offsetLeft,oy=e.clientY-el.offsetTop;h.setPointerCapture(e.pointerId);
+    const mv=ev=>{el.style.left=Math.max(0,Math.min(stage.clientWidth-60,ev.clientX-ox))+'px';el.style.top=Math.max(0,Math.min(stage.clientHeight-50,ev.clientY-oy))+'px'};
+    const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);save()};
+    h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up)});
+  stage.append(el);if(!s)save();
+}
+
+Object.entries(T).forEach(([k,d])=>{const x=$('<button><span>'+d.i+'</span>'+d.t+'</button>');x.onclick=()=>add(k);bar.append(x)});
+bar.append($('<i class="sep"></i>'));
+['#1d3f5c','#e0736a','#a14e8f','#2d4a3e','#e8e4d8'].forEach((c,i)=>{
+  const x=$('<button class="dot" aria-label="Background '+(i+1)+'" style="background:'+c+'"></button>');
+  x.onclick=()=>{stage.className='b'+(i+1);save()};bar.append(x)});
+bar.append($('<i class="sep"></i>'));
+const fs=$('<button><span>⛶</span>Full screen</button>');
+fs.onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+bar.append(fs);
+const sv=$('<button><span>💾</span>Save</button>');
+sv.onclick=()=>{save();sv.lastChild.textContent='Saved ✓';setTimeout(()=>sv.lastChild.textContent='Save',1500)};
+const rs=$('<button><span>🗑️</span>Reset</button>');
+rs.onclick=()=>{stage.querySelectorAll('.widget').forEach(w=>w.querySelector('.x').click());stage.className='b1';add('clock');add('timer')};
+bar.append(sv,rs);
+let saved=null;try{saved=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(saved&&saved.w&&saved.w.length&&saved.w.every(w=>T[w.type])){stage.className=saved.bg||'b1';saved.w.forEach(w=>add(w.type,w))}else{add('clock');add('timer')}
+</script>
+</body>
+</html>
