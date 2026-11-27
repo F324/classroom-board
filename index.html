@@ -48,7 +48,10 @@ textarea{resize:vertical;min-height:90px}
 .lamp.on{opacity:1;box-shadow:0 0 18px currentColor}
 .meter{height:18px;border-radius:9px;background:var(--line);overflow:hidden;margin:12px 0 6px}
 .meter i{display:block;height:100%;width:0;background:#22c55e;transition:width .08s,background .2s}
-.note{min-height:80px;outline:none;font-size:1.15rem;line-height:1.4}
+.note{min-height:80px;outline:none;font-size:1.15rem;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.widget.rs{resize:both;overflow:auto;min-width:220px}
+.widget.rs .body{flex:1;min-height:0;display:flex}
+.widget.rs .note{flex:1;min-width:0;overflow:auto}
 .dice{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;min-height:64px}
 .die{width:60px;height:60px;border-radius:12px;background:var(--field);border:2px solid var(--ink);display:grid;place-items:center;font-size:1.9rem;font-weight:800}
 #bar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:4px;align-items:center;background:var(--bar);backdrop-filter:blur(8px);padding:6px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:calc(100% - 16px);overflow-x:auto}
@@ -153,20 +156,20 @@ qr:{t:'QR code',i:'🔳',w:260,make(b){
   const inp=b.querySelector('input'),box=b.querySelector('.qr div');
   const draw=()=>{box.innerHTML='';const v=inp.value.trim();if(!v||typeof QRCode==='undefined'){box.textContent=v?'QR library could not load.':'Type a link above.';return}new QRCode(box,{text:v,width:180,height:180})};
   inp.addEventListener('input',draw);draw()}},
-text:{t:'Note',i:'📝',w:320,make(b){
+text:{t:'Note',i:'📝',w:320,rs:1,make(b){
   b.innerHTML='<div class="note" contenteditable="true" spellcheck="false" aria-label="Note">Today we are learning…</div>'}}
 };
 
 const KEY='classroom-board-v1';
-function save(){try{const w=[...stage.querySelectorAll('.widget')].map(el=>{const b=el.querySelector('.body');return{type:el.dataset.type,x:el.offsetLeft,y:el.offsetTop,v:[...b.querySelectorAll('textarea,input')].map(f=>f.value),n:[...b.querySelectorAll('[contenteditable]')].map(f=>f.innerText)}});localStorage.setItem(KEY,JSON.stringify({bg:stage.className,w}))}catch(e){}}
+function save(){try{const w=[...stage.querySelectorAll('.widget')].map(el=>{const b=el.querySelector('.body');return{type:el.dataset.type,x:el.offsetLeft,y:el.offsetTop,w:el.offsetWidth,h:el.classList.contains('rs')?el.offsetHeight:0,v:[...b.querySelectorAll('textarea,input')].map(f=>f.value),n:[...b.querySelectorAll('[contenteditable]')].map(f=>f.innerText)}});localStorage.setItem(KEY,JSON.stringify({bg:stage.className,w}))}catch(e){}}
 stage.addEventListener('input',()=>{clearTimeout(save.t);save.t=setTimeout(save,500)});
 function add(type,s){
   const d=T[type];hint.classList.add('gone');
   const el=$('<section class="widget"><header><span>'+d.i+' '+d.t+'</span><button class="x" aria-label="Close '+d.t+'">×</button></header><div class="body"></div></section>');
   const off=(n++%6)*32;
-  el.style.left=Math.min(24+off,Math.max(8,innerWidth-d.w-16))+'px';el.style.top=(24+off)+'px';el.style.width=d.w+'px';el.style.zIndex=++z;
+  el.style.left=Math.min(24+off,Math.max(8,innerWidth-d.w-16))+'px';el.style.top=(24+off)+'px';el.style.width=d.w+'px';el.style.zIndex=++z;if(d.rs){el.classList.add('rs');el.style.minHeight='160px';el.addEventListener('pointerup',save)}
   const body=el.querySelector('.body');const kill=d.make(body);el.dataset.type=type;
-  if(s){el.style.left=s.x+'px';el.style.top=s.y+'px';(s.v||[]).forEach((v,k)=>{const f=body.querySelectorAll('textarea,input')[k];if(f){f.value=v;f.dispatchEvent(new Event('input'))}});(s.n||[]).forEach((v,k)=>{const f=body.querySelectorAll('[contenteditable]')[k];if(f)f.innerText=v})}
+  if(s){el.style.left=s.x+'px';el.style.top=s.y+'px';if(s.w)el.style.width=s.w+'px';if(s.h)el.style.height=s.h+'px';(s.v||[]).forEach((v,k)=>{const f=body.querySelectorAll('textarea,input')[k];if(f){f.value=v;f.dispatchEvent(new Event('input'))}});(s.n||[]).forEach((v,k)=>{const f=body.querySelectorAll('[contenteditable]')[k];if(f)f.innerText=v})}
   el.querySelector('.x').onclick=()=>{kill&&kill();el.remove();if(!stage.querySelector('.widget'))hint.classList.remove('gone');save()};
   const h=el.querySelector('header');
   el.addEventListener('pointerdown',()=>el.style.zIndex=++z);
